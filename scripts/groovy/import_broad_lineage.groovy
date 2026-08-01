@@ -9,7 +9,9 @@
 
 // ---- config ----------------------------------------------------------------
 def donorsToImport = ["6539"]   // quick check: one image. [] / null = every CSV in the folder.
-def folder = new File("/home/smith6jt/IO60panc2nd/LymphVizkit-Senior/data/phenotype/qupath_class")
+// EDIT to your checkout: point at <repo>/data/phenotype/qupath_class (produced by
+// scripts/senior/export_broad_class_for_qupath.py). Kept as a placeholder for portability.
+def folder = new File("/path/to/LymphVizkit/data/phenotype/qupath_class")
 // ----------------------------------------------------------------------------
 
 // distinct colours for the eight broad lineages (match the analysis figures)

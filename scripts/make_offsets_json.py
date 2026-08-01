@@ -42,15 +42,21 @@ def main(argv: list[str]) -> int:
         print(__doc__)
         return 2
     rc = 0
+    import glob
     for pattern in argv[1:]:
-        for p in sorted([pattern] if os.path.isfile(pattern) else []):
-            pass
         # Expand globs manually (to support shell on Windows, etc.)
-        import glob
         for path in glob.glob(pattern):
             if not os.path.isfile(path):
                 continue
-            base = os.path.splitext(path)[0]
+            # Strip the full .ome.tif(f) extension so the sidecar is
+            # "<case_id>.offsets.json" (what Viv derives), NOT "<case_id>.ome.offsets.json".
+            low = path.lower()
+            if low.endswith(".ome.tiff"):
+                base = path[:-len(".ome.tiff")]
+            elif low.endswith(".ome.tif"):
+                base = path[:-len(".ome.tif")]
+            else:
+                base = os.path.splitext(path)[0]
             out = base + ".offsets.json"
             try:
                 print(f"Computing offsets for {path} -> {out}")

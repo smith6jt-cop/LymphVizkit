@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Install a local static Avivator under shiny/www/avivator.
+# Install a local static Avivator under app/shiny_app/www/avivator.
 # Prefers building from a local source tree if present; otherwise mirrors the public site.
 
-APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-WWW_DIR="$APP_DIR/shiny/www"
+APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"   # repo root
+WWW_DIR="$APP_DIR/app/shiny_app/www"
 DEST_DIR="$WWW_DIR/avivator"
 
 mkdir -p "$DEST_DIR"

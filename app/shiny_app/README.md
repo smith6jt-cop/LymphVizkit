@@ -1,34 +1,42 @@
-# Shiny App: Follicle Area Distributions
+# LymphVizkit — Shiny app
 
-Interactive Shiny app to explore follicle area distributions across donor status (ND → Aab+ → T1D) with:
+Interactive R/Shiny app for exploring **follicle-level** multiplexed-imaging data (PhenoCycler /
+CODEX) across a **configurable grouping axis**, plus an embedded image viewer (Avivator/Viv).
+Domain assumptions live in `R/00_domain_config.R` (see the repo-root `README.md` and
+`docs/data_contract.md`); the lymphoid default groups follicles by `Resting` / `Reactive` /
+`Involuted` (physical column `Donor Status`).
 
-- Band-region Follicle_Markers: % positive per follicle vs. size (mean ± SE)
-- Band-region Follicle_Targets: density/count vs. size (mean ± SE)
-- Follicle composition vs. size (INS/GCG/SST fractions)
-- One-way ANOVA per size bin across donor groups (BH-adjusted p-values)
+- Follicle markers: % positive per follicle vs. size (mean ± SE)
+- Follicle targets: density / count vs. size (mean ± SE)
+- Follicle composition vs. size (follicle-defining marker fractions)
+- Per-size-bin tests across the configured groups (BH-adjusted p-values)
 
-Data source: `../data/master_results.xlsx` (generated from TSVs in `../data/results` with donor key `CODEX_Pancreas_Donors.xlsx`).
+Data source: `../../data/app_data/master_results.xlsx` (Excel fallback) or
+`../../data/app_data/follicle_explorer.h5ad`. Generate the committed synthetic example with
+`python ../../scripts/make_synthetic_follicle_data.py`.
 
 ## Run
 
-Prereqs: R >= 4.2 with packages: `shiny`, `readxl`, `dplyr`, `tidyr`, `stringr`, `ggplot2`, `plotly`, `broom`.
+Prereqs: R >= 4.2 with `shiny`, `readxl`, `dplyr`, `tidyr`, `stringr`, `ggplot2`, `plotly`, `broom`
+(install via `../../scripts/install_shiny_deps.R`).
 
 ```r
-shiny::runApp("shiny")
+# from the repository root
+shiny::runApp("app/shiny_app")
 ```
 
-Or from the shell:
+Or from within this directory:
 
 ```bash
-R -q -e 'shiny::runApp("shiny", launch.browser=TRUE)'
+R -q -e 'shiny::runApp(".", launch.browser = TRUE)'
 ```
 
 ## Notes
 
-- Follicle diameter is standardized to CORE area: derived from `Follicle_Targets` rows where `type == "follicle_core"` (core `region_um2`). Diameter = `2 * sqrt(core_area/pi)`.
-- Band-region rows are used for markers (`region_type == "follicle_band"`) and targets (`type == "follicle_band"`).
-- Binning is by diameter (µm); default bin width = 50 µm. Adjust in the sidebar.
-- Markers use `% positive` (100 × `pos_frac`). Targets use `area_density` by class.
-- Composition uses `*_any / cells_total` for INS/GCG/SST.
-- Stats tab runs one-way ANOVA per bin across groups (ND, Aab+, T1D) and reports BH-adjusted p-values.
-
+- Follicle diameter is derived from CORE area: `Follicle_Targets` rows where `type ==
+  "follicle_core"` (core `region_um2`); `follicle_diam_um = 2 * sqrt(core_area / pi)`.
+- Region tokens are `follicle_core`, `follicle_band`, `follicle_union` (union synthesized when absent).
+- Binning is by diameter (µm); default bin width = 50 µm (adjust in the sidebar).
+- Markers use `% positive` (100 × `pos_frac`); targets use `area_density` by class.
+- The grouping axis (levels, order, colors, display label) is read from `DOMAIN$grouping` — do not
+  hardcode group names.

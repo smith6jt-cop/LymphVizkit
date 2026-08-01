@@ -217,9 +217,9 @@ viewer_server <- function(id, forced_image, current_tab) {
 
       if (is.null(viewer_base)) {
         return(tagList(
-          tags$div(style = "color:#b00;", "Local Avivator static build not found under shiny/www/avivator."),
+          tags$div(style = "color:#b00;", "Local Avivator static build not found under app/shiny_app/www/avivator."),
           tags$div(style = "color:#666; font-size:90%;",
-                   "To install: run scripts/install_avivator.sh (requires Node >= 18) or place a prebuilt bundle under shiny/www/avivator.")
+                   "To install: run scripts/install_avivator.sh (requires Node >= 18) or place a prebuilt bundle under app/shiny_app/www/avivator.")
         ))
       }
 
