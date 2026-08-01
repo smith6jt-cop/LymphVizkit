@@ -1,0 +1,159 @@
+# Deploying LymphVizkit to UF RC PubApps
+
+Public, HTTPS hosting of the Shiny app on UF Research Computing's **PubApps** web service
+(`https://lymphvizkit.rc.ufl.edu`). This runbook is the executable companion to the planning
+notes; RC's own docs are the authority for anything RC-side:
+[overview](https://docs.rc.ufl.edu/services/web_hosting/) ·
+[deployment](https://docs.rc.ufl.edu/services/web_hosting/deployment/) ·
+[Shiny](https://docs.rc.ufl.edu/services/web_hosting/shiny/) ·
+[systemd](https://docs.rc.ufl.edu/services/web_hosting/systemd/) ·
+[price list](https://it.ufl.edu/rc/get-started/price-list/).
+
+## Model in one paragraph
+
+RC gives you a RHEL 8 VM (base **2 vCPU / 16 GB / 1 TB `/pubapps/$project`**, rootless **Podman** +
+conda, **no Docker**, **no access to /blue or /orange**). You build a conda env, run the app on an
+**RC-assigned port** via `deploy/run.R` (`shiny::runApp(host="0.0.0.0", port=…)`), and keep it alive
+with **systemd `--user`** + `loginctl enable-linger`. RC's load balancer reverse-proxies the free
+`.rc.ufl.edu` subdomain (+ SSL) to your port. **No shiny-server, no nginx to manage for the app** —
+but the Viewer's OME-TIFFs need HTTP Range serving, which `runApp` can't do, so a small **nginx
+Podman sidecar** serves them.
+
+## Scope decisions baked into these files
+
+- **AI Assistant: OFF** (`LYMPH_ENABLE_AI=FALSE`, the app default) → no UF Navigator API key on the
+  public host. The app is safe to leave fully open.
+- **Viewer: ON**, images hosted on PubApps → requires purchased storage + the nginx sidecar.
+
+## What's in this directory
+
+| File | Purpose |
+|---|---|
+| `environment.yml` | conda/mamba runtime env (source of truth for deps) |
+| `run.R` | app launcher (systemd `ExecStart` runs this) |
+| `env.sh.example` | → copy to `env.sh`, systemd `EnvironmentFile` (no secrets) |
+| `lymphvizkit.service` | systemd `--user` unit for the app |
+| `lymphvizkit-images.container` | Podman Quadlet unit — nginx sidecar for OME-TIFFs |
+| `nginx-images.conf` | Range-capable static config for the sidecar |
+| `install_runtime_R.R` | OPTIONAL — GitHub pkgs (vitessceR/rdeck), only if needed |
+
+Placeholders to replace everywhere: `<project>` (RC service username / instance),
+`<APP_PORT>` and `<IMG_PORT>` (RC-assigned).
+
+---
+
+## Phase 0 — Allocation + support ticket
+
+1. Get a **PA-Instance (PubApps)** allocation (free 3-month Trial to pilot, or **$300/yr**). Add
+   **PA-STORAGE** for the OME-TIFFs — **+2 TB ($280/yr)** recommended (3 TB total, fits all 22 donors)
+   or +1 TB ($140/yr) for the current 15 — and, for concurrency headroom, **+2 PA-CPU ($88/yr)**.
+   Recommended "runs well" ≈ **$668/yr**.
+2. Open an RC support ticket specifying: **public/open** access; suggested domain
+   **`lymphvizkit.rc.ufl.edu`**; **two same-origin proxy routes** — `/` → `<APP_PORT>` (with
+   **WebSocket upgrade** — Shiny needs it) and `/local_images/` → `<IMG_PORT>`; the storage bump;
+   developer GatorLink usernames. RC returns the project username, both ports, and DNS/proxy setup.
+
+## Phase 1 — Provision the env (on the VM)
+
+```bash
+# install miniforge/mamba per RC's Shiny doc, then:
+mamba env create -p /pubapps/<project>/prod/conda -f deploy/environment.yml
+/pubapps/<project>/prod/conda/bin/python -c "import anndata; print(anndata.__version__)"   # bridge check
+```
+
+## Phase 2 — Clone + stage data
+
+```bash
+mkdir -p /pubapps/<project>/prod/logs
+git clone <repo-url> /pubapps/<project>/prod/lymphvizkit
+```
+Stage data (nothing is in git; PubApps can't see /blue, so copy from the source machine, e.g. via a
+HiPerGator hop or Globus):
+
+- **Core app data (~1.6 GB)** → `/pubapps/<project>/prod/lymphvizkit/data/`: copy `data/app_data/`
+  **and its four symlink targets** — `follicle_explorer_senior.h5ad`, `follicles_core_senior.h5ad`,
+  `parquet/`, `phenotype_rules.csv` — preserving the relative `../` symlink layout so
+  `../../data/app_data/…` resolves from `app/shiny_app/`. Do **not** copy the ~113 GB of pipeline
+  scratch (`redsea_scratch/`, `cells_redsea/`, top-level `cells/`, `phenotype/`, `restore*`,
+  `singlecell_protein.h5ad`, …) — the app never reads it.
+- **OME-TIFFs (~1.2 TB)** → `/pubapps/<project>/follicle_ome_tiff/`: Globus-transfer every
+  `<case>.ome.tiff` **and** its `<case>.offsets.json` sidecar.
+
+## Phase 3 — Configure + start services
+
+```bash
+cd /pubapps/<project>/prod/lymphvizkit
+cp deploy/env.sh.example deploy/env.sh && chmod 600 deploy/env.sh
+# edit deploy/env.sh: set <project> and <APP_PORT>
+
+mkdir -p ~/.config/systemd/user ~/.config/containers/systemd
+cp deploy/lymphvizkit.service ~/.config/systemd/user/
+cp deploy/lymphvizkit-images.container ~/.config/containers/systemd/
+# edit both copies: set <project>, <APP_PORT>, <IMG_PORT>
+
+loginctl enable-linger "$USER"
+systemctl --user daemon-reload
+systemctl --user enable --now lymphvizkit lymphvizkit-images
+systemctl --user status lymphvizkit lymphvizkit-images
+```
+
+## Phase 4 — Verify
+
+```bash
+# app up:
+curl -s http://localhost:<APP_PORT>/ | head
+# image server honors Range (must be 206 + Accept-Ranges, NOT 200):
+curl -I -H "Range: bytes=0-1" http://localhost:<IMG_PORT>/local_images/115.ome.tiff
+tail -f /pubapps/<project>/prod/logs/app.log      # watch R startup
+```
+Then browse `https://lymphvizkit.rc.ufl.edu` and exercise each tab:
+**Plot** (DuckDB load; confirm no AI panel) · **Trajectory** (the reticulate→`anndata::read_h5ad`
+check) · **Statistics** (`lmerTest`/`emmeans`) · **Spatial** (DuckDB `tissue`/`cell_distance`) ·
+**Drill-down** (per-follicle CSV + GeoJSON) · **Viewer** (Avivator streams a donor's OME-TIFF via Range).
+Change any input and confirm a plot updates → verifies **WebSockets** pass the proxy (if the page is
+inert, WS upgrade isn't enabled — go back to RC).
+
+## Viewer backend — optional TissUUmaps swap
+
+The Viewer defaults to **Avivator** (OME-TIFFs streamed by the nginx sidecar, HTTP Range). To
+swap in **TissUUmaps** — region drawing, GeoJSON import/export, per-cell marker overlays, and
+no Range requirement — do this instead of (not alongside) the `lymphvizkit-images` sidecar:
+
+1. **Build a project per donor** on a machine that has the slides + `pyvips`:
+   ```bash
+   for c in 115 6476 6539 …; do
+     python scripts/senior/build_tissuumaps_project.py \
+       --image /pubapps/<project>/follicle_ome_tiff/$c.ome.tiff \
+       --out-dir /pubapps/<project>/tissuumaps \
+       --regions data/app_data/json/$c.geojson
+   done
+   ```
+   Idempotent — a killed run resumes. Check the printed `channels:` line for the real disk
+   ratio before doing all 22, and verify one donor visually (`--keep`) first: the layers are
+   **8-bit** proxies of the 16-bit data.
+2. **Ask RC for a third proxy route**: `/tissuumaps/` → `<TM_PORT>` (same origin as the app).
+3. **Start the service:**
+   ```bash
+   cp deploy/lymphvizkit-tissuumaps.container ~/.config/containers/systemd/   # edit <project>/<TM_PORT>
+   systemctl --user daemon-reload && systemctl --user enable --now lymphvizkit-tissuumaps
+   curl -s -o /dev/null -w '%{http_code}\n' http://localhost:<TM_PORT>/ping     # -> 200
+   ```
+4. **Flip the app** in `deploy/env.sh`: `LYMPH_VIEWER_BACKEND=tissuumaps`,
+   `TISSUUMAPS_URL=/tissuumaps`, `TISSUUMAPS_PROJECT_DIR=/pubapps/<project>/tissuumaps`, then
+   `systemctl --user restart lymphvizkit`.
+
+`deploy/tissuumaps.cfg` sets `READ_ONLY = True` and the volume is mounted `:ro` — required,
+because the Flask app otherwise exposes a **writable file browser** over its slide directory.
+Users can still draw regions in the browser and download the GeoJSON. Rationale and the
+verified findings: [`docs/tissuumaps_evaluation.md`](../docs/tissuumaps_evaluation.md).
+
+## Operating notes
+
+- **Update the app:** `git -C /pubapps/<project>/prod/lymphvizkit pull && systemctl --user restart lymphvizkit`.
+- **Reboot:** RC does not auto-start pubapps services on VM reboot — after one, `systemctl --user start lymphvizkit lymphvizkit-images`.
+- **Logs:** app → `/pubapps/<project>/prod/logs/app.log`; sidecar → `podman logs lymphvizkit-images`.
+- **Local dev keeps the AI tab:** run with `LYMPH_ENABLE_AI=TRUE`.
+- **Security:** the previously-committed-on-disk UF Navigator key (`app/shiny_app/.Renviron`) should be
+  **rotated/revoked** — it isn't used on the public host (AI off), but the old key is compromised.
+- **Data sensitivity:** the app is fully open; if any data is unpublished/sensitive, ask RC to gate the
+  `/` route behind **GatorLink SSO** (a ticket toggle).

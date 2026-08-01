@@ -1,0 +1,31 @@
+# deploy/lymphvizkit.service — systemd --user unit for the Shiny app.
+#
+# Install on the VM:
+#   mkdir -p ~/.config/systemd/user /pubapps/<project>/prod/logs
+#   cp deploy/lymphvizkit.service ~/.config/systemd/user/lymphvizkit.service
+#   # edit <project>/<APP_PORT> below, then:
+#   loginctl enable-linger $USER
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now lymphvizkit
+#   systemctl --user status lymphvizkit
+#
+# NOTE (RC docs): auto-start on VM reboot is not configured at the system level in pubapps.
+# Restart=always covers process crashes; after a full reboot you may need to log in and
+# `systemctl --user start lymphvizkit` manually.
+[Unit]
+Description=LymphVizkit (Shiny)
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5
+WorkingDirectory=/pubapps/<project>/prod/lymphvizkit/app/shiny_app
+EnvironmentFile=/pubapps/<project>/prod/lymphvizkit/deploy/env.sh
+ExecStart=/pubapps/<project>/prod/conda/bin/R --no-echo --no-restore --file=/pubapps/<project>/prod/lymphvizkit/deploy/run.R
+StandardOutput=file:/pubapps/<project>/prod/logs/app.log
+StandardError=inherit
+
+[Install]
+WantedBy=default.target
