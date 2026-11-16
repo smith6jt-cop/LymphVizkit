@@ -58,3 +58,10 @@ Thumbs.db
 .Renviron.local
 deploy/env.sh
 *.key
+
+# ---- flow/ (flow cytometry workbench) ----
+# Runtime data lives under data/flow/ (already covered by data/** above).
+flow/tests/fixtures/           # third-party example FCS files, fetched at test time (sha256-pinned)
+flow/tests/e2e/screenshots/
+flow/tests/bench/results/
+flow/build/
