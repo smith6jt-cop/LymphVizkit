@@ -144,6 +144,12 @@ def from_flowkit_strategy(gs, sample_id: str | None = None, sample_comp_refs: se
     unsupported: list[tuple[str, str]] = []
     path_to_id: dict[tuple, int] = {}
     next_id = 1
+    # A GatingML dimension on a compensated parameter is named after the *fluorochrome* of
+    # its spectrum matrix; lymphflow addresses channels by detector ($PnN).
+    fluoro_to_detector: dict[str, dict[str, str]] = {}
+    for ref, matrix in (getattr(gs, "comp_matrices", None) or {}).items():
+        fluoros = list(getattr(matrix, "fluorochromes", None) or [])
+        fluoro_to_detector[ref] = dict(zip(fluoros, matrix.detectors)) if fluoros else {}
     for gate_name, gate_path in sorted(gs.get_gate_ids(), key=lambda t: len(t[1])):
         full = tuple(gate_path) + (gate_name,)
         try:
@@ -154,6 +160,8 @@ def from_flowkit_strategy(gs, sample_id: str | None = None, sample_comp_refs: se
                     raise Unsupported("ancestor gate is unsupported")
                 parent_id = path_to_id[tuple(gate_path)]
             cls = type(gate).__name__
+            if cls not in ("RectangleGate", "PolygonGate", "EllipsoidGate"):
+                raise Unsupported(f"{cls} is not supported")
             if getattr(gate, "use_complement", False):
                 raise Unsupported("complement gates are not supported")
             dims = []
@@ -169,7 +177,8 @@ def from_flowkit_strategy(gs, sample_id: str | None = None, sample_comp_refs: se
                     raise Unsupported(f"compensation reference '{ref}' is not the sample's own matrix")
                 scale = make_scale("linear") if dim.transformation_ref is None \
                     else _scale_from_fk(gs.get_transform(dim.transformation_ref))
-                dims.append({"pnn": dim.id, "comp": comp, "scale": {"kind": scale.kind, "params": scale.p}})
+                pnn = fluoro_to_detector.get(ref, {}).get(dim.id, dim.id)
+                dims.append({"pnn": pnn, "comp": comp, "scale": {"kind": scale.kind, "params": scale.p}})
             if cls == "RectangleGate":
                 if len(dims) == 1:
                     kind, geom = "range", {"x0": gate.dimensions[0].min, "x1": gate.dimensions[0].max}
@@ -192,6 +201,9 @@ def from_flowkit_strategy(gs, sample_id: str | None = None, sample_comp_refs: se
                 raise Unsupported(f"{cls} is not supported")
         except Unsupported as exc:
             unsupported.append(("/".join(full[1:]), str(exc)))
+            continue
+        except Exception as exc:  # e.g. FlowKit's QuadrantReferenceError, gates without dimensions
+            unsupported.append(("/".join(full[1:]), f"{type(exc).__name__}: not supported"))
             continue
         gid = next_id
         next_id += 1

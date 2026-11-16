@@ -180,7 +180,11 @@ class Engine:
     def gate_key(self, sample: SampleData, node: GateNode | None) -> str:
         if node is None:
             return "root"
-        uses_comp = any(d.comp == "sample" for d in node.spec.dims)
+        # Compensation enters the key only when it actually changes this gate's coordinates
+        # (the dimension asks for it and its channel is one of the matrix detectors), so
+        # switching compensation does not invalidate scatter gates.
+        uses_comp = sample.comp_active and any(
+            d.comp == "sample" and d.pnn in sample.comp.detectors for d in node.spec.dims)
         payload = json.dumps(
             [
                 ENGINE_VERSION,

@@ -172,7 +172,10 @@ def ingest_fcs(path: Path, parquet_path: Path, keep_times: bool = False) -> Inge
         }
     )
     tmp = parquet_path.with_suffix(".tmp")
-    pq.write_table(table, tmp, row_group_size=ROW_GROUP, compression="zstd")
+    # Float event data is high-cardinality: dictionary encoding only bloats it (measured: 41 %
+    # larger than the FCS). Byte-stream-split + zstd is ~19 % smaller than the FCS and reads faster.
+    pq.write_table(table, tmp, row_group_size=ROW_GROUP, compression="zstd",
+                   use_dictionary=False, use_byte_stream_split=True)
     tmp.replace(parquet_path)
 
     dtypes = {c.dtype for c in channels}
