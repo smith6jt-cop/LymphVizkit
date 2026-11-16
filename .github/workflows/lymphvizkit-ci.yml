@@ -46,3 +46,31 @@ jobs:
 
       - name: Viewer helpers unit tests
         run: Rscript scripts/test_viewer_helpers.R
+
+  # Flow cytometry workbench (flow/): independent of the Shiny app and of the smoke job above.
+  flow:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: flow
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: flow/pyproject.toml
+
+      - name: Install lymphflow with all extras
+        run: pip install -e ".[interop,jobs,dev]"
+
+      - name: Unit, API and job tests (synthetic data, no network)
+        run: python -m pytest tests/unit -q
+
+      # Fetches ~56 MB of public reference files (sha256-pinned) from the FlowKit repository.
+      - name: Parity tests (ISAC GatingML truth tables, FlowKit, FlowJo workspace)
+        env:
+          LYMPH_FLOW_REQUIRE_FIXTURES: "1"
+        run: python -m pytest tests/parity -q

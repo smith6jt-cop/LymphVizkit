@@ -147,6 +147,57 @@ because the Flask app otherwise exposes a **writable file browser** over its sli
 Users can still draw regions in the browser and download the GeoJSON. Rationale and the
 verified findings: [`docs/tissuumaps_evaluation.md`](../docs/tissuumaps_evaluation.md).
 
+## Flow workbench — optional second service (prototype, not approved for go-live)
+
+`flow/` is a separate Python service (flow cytometry upload, gating, statistics, clustering); see
+[`flow/README.md`](../flow/README.md) and [`docs/omiq_evaluation.md`](../docs/omiq_evaluation.md).
+**Everything in this section is an untested template**: it has not been run on a PubApps VM.
+
+It differs from the Shiny app in ways that matter to RC: it **accepts user uploads**, **stores
+user work**, and therefore **must not be public**. Ask RC, in a ticket, for all of the following
+before starting it:
+
+1. A proxy route (`/flow/` → `<FLOW_PORT>`) **gated by RC SSO**, scoped to the lab's HiPerGator
+   group, separate from the open `/` route.
+2. The name of the request header in which the proxy passes the authenticated user, and
+   confirmation that **only the proxy can reach `<FLOW_PORT>`** (the service trusts that header).
+3. Whether the proxy strips the `/flow` prefix (leave `LYMPH_FLOW_URL_PREFIX` empty) or forwards
+   it (set `LYMPH_FLOW_URL_PREFIX=/flow`), and its request-body size limit (uploads).
+4. Approval for uploads and a persistent writable directory, and the data classification of the
+   flow files. Restricted data needs PrivApps instead.
+5. Whether `/pubapps` is a local or network filesystem (SQLite uses WAL journalling, which is not
+   safe on network filesystems).
+
+Then:
+
+```bash
+mamba create -p /pubapps/<project>/prod/flow-env python=3.13 pip
+/pubapps/<project>/prod/flow-env/bin/pip install "/pubapps/<project>/prod/lymphvizkit/flow[interop,jobs]"
+```
+
+```bash
+mkdir -p /pubapps/<project>/flow_data/tmp
+```
+
+Uncomment and fill the `LYMPH_FLOW_*` block in `deploy/env.sh`, install the unit as described at
+the top of `deploy/lymphvizkit-flow.service`, and check:
+
+```bash
+curl -s http://localhost:<FLOW_PORT>/api/health
+```
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' http://localhost:<FLOW_PORT>/api/me
+```
+
+The second command must print `401`: without the identity header the service serves only
+`/api/health`, the API description (`/api/docs`) and the static page files — no data. It prints
+`200` only through the SSO-gated route.
+
+Sizing on the base 2 vCPU / 16 GB VM (measured on two cores, `flow/tests/bench/`): repeat plots
+of a 5-million-event, 31-parameter file take about 0.15 s; its first plot takes about 8.5 s.
+One background job runs at a time. Event files are about 0.8× the size of float FCS files.
+
 ## Operating notes
 
 - **Update the app:** `git -C /pubapps/<project>/prod/lymphvizkit pull && systemctl --user restart lymphvizkit`.
