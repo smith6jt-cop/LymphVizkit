@@ -44,6 +44,13 @@ not on "this donor should look like the others."
 - `scripts/CLAUDE.md` — pipeline scripts, batch correction, pseudotime modes, **the Senior phenotyping pipeline (REDSEA spillover → RESTORE normalization → broad-lineage assignment → QuPath inspection)**, and the **Senior trajectory batch-correction + robustness fix (Jul 2026)** — scVI `batch_key`, Harmony θ-sweep, robust root, hard gates, combined mode
   - (`follicle_analysis/` was removed; its content folded into `scripts/senior/` + `scripts/CLAUDE.md`)
 
+- `flow/CLAUDE.md` — **flow cytometry workbench** (`lymphflow`, Nov 2026): a separate Python/FastAPI
+  service under `flow/`, not part of the Shiny app. Rules that guard against silent scientific errors
+  (scale-bound gates, derived compensation, linear-value statistics, visible panel mismatches), the
+  traps found while building it, and its verification status. Scope, OMIQ comparison and roadmap:
+  [`docs/omiq_evaluation.md`](docs/omiq_evaluation.md). Not deployed; `deploy/lymphvizkit-flow.service`
+  is an untested template.
+
 ## App Architecture (Modular - Feb 2026)
 
 The Shiny app lives in `app/shiny_app/` and uses a modular architecture:

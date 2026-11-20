@@ -1,0 +1,34 @@
+# deploy/lymphvizkit-flow.service — systemd --user unit for the flow cytometry workbench (flow/).
+#
+# UNTESTED TEMPLATE: written from lymphvizkit.service; it has not been run on a PubApps VM.
+# Do NOT start this until RC has provided (see deploy/DEPLOY.md § "Flow workbench"):
+#   - a proxy route to <FLOW_PORT> that is gated by RC SSO (not the app's open route),
+#   - the name of the header in which the proxy passes the authenticated user,
+#   - confirmation that only the proxy can reach <FLOW_PORT>,
+#   - approval for user uploads and a persistent writable directory.
+# The workbench accepts uploads and stores user work; it must never be reachable unauthenticated.
+#
+# Install on the VM:
+#   mkdir -p ~/.config/systemd/user /pubapps/<project>/prod/logs /pubapps/<project>/flow_data
+#   cp deploy/lymphvizkit-flow.service ~/.config/systemd/user/
+#   # edit <project> below and the LYMPH_FLOW_* variables in deploy/env.sh, then:
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now lymphvizkit-flow
+#   curl -s http://localhost:<FLOW_PORT>/api/health
+[Unit]
+Description=LymphVizkit Flow (flow cytometry workbench)
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5
+EnvironmentFile=/pubapps/<project>/prod/lymphvizkit/deploy/env.sh
+# One process by design: the job dispatcher, SQLite writer lock and array cache are per-process.
+ExecStart=/pubapps/<project>/prod/flow-env/bin/python -m lymphflow serve
+StandardOutput=file:/pubapps/<project>/prod/logs/flow.log
+StandardError=inherit
+
+[Install]
+WantedBy=default.target

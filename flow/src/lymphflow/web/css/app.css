@@ -1,0 +1,89 @@
+:root {
+  --ink: #1f2430; --muted: #5d6675; --line: #d5dae2; --bg: #f4f6f9; --panel: #ffffff;
+  --accent: #4477AA; --accent-dark: #2f5a85; --gate: #CC6633; --ok: #228833; --bad: #b3261e;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--ink); background: var(--bg); }
+h1 { font-size: 18px; margin: 0; } h1 span { color: var(--accent); }
+h2 { font-size: 15px; margin: 0 0 8px; } h3 { font-size: 14px; margin: 14px 0 6px; }
+header { display: flex; align-items: center; gap: 10px; padding: 8px 14px; background: var(--panel); border-bottom: 1px solid var(--line); }
+header .spacer { flex: 1; }
+main { display: grid; grid-template-columns: 260px minmax(580px, 1fr) 470px; gap: 10px; padding: 10px; align-items: start; }
+main.empty, .empty, .loading { padding: 40px; text-align: center; color: var(--muted); }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; min-width: 0; }
+.panel.bottom { margin: 0 10px 14px; }
+.row { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
+.row.wrap { flex-wrap: wrap; }
+.split { display: grid; grid-template-columns: minmax(380px, 1fr) minmax(280px, 1fr); gap: 14px; align-items: start; }
+.hint { color: var(--muted); font-size: 12.5px; margin: 4px 0; }
+.hint.caption { min-height: 3em; }
+.hint.offscale { min-height: 1.5em; }  /* two lines reserved: the plot must not jump when the caption changes */
+.warn { color: #9a5b00; font-weight: 600; }
+.error { color: var(--bad); font-size: 13px; margin: 6px 0; white-space: pre-wrap; }
+.banner { display: flex; justify-content: space-between; gap: 12px; padding: 7px 14px; background: #eaf1f8; border-bottom: 1px solid var(--line); margin: 0; }
+.banner.error { background: #fdecea; }
+label { font-size: 13px; color: var(--muted); display: inline-flex; align-items: center; gap: 5px; }
+label.check { color: var(--ink); }
+select, input[type="text"], input[type="number"], input:not([type]) { font: inherit; padding: 3px 6px; border: 1px solid var(--line); border-radius: 4px; background: #fff; }
+input[type="number"] { width: 92px; } input.narrow { width: 62px; }
+button, a.button { font: inherit; padding: 4px 10px; border: 1px solid var(--accent); border-radius: 4px; background: var(--accent); color: #fff; cursor: pointer; text-decoration: none; display: inline-block; }
+button:hover, a.button:hover { background: var(--accent-dark); }
+button:disabled { opacity: 0.5; cursor: default; }
+button.quiet { background: transparent; color: var(--muted); border-color: transparent; padding: 1px 6px; }
+button.quiet:hover { color: var(--ink); background: #eef1f5; }
+button.x:hover { color: var(--bad); }
+.tools button { background: #fff; color: var(--accent); margin-right: 4px; }
+.tools button.on { background: var(--gate); border-color: var(--gate); color: #fff; }
+nav { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+nav button { background: transparent; color: var(--muted); border: none; border-bottom: 3px solid transparent; border-radius: 0; padding: 6px 12px; }
+nav button.on { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
+nav button:hover { background: #eef1f5; }
+
+/* samples */
+.upload { display: block; padding: 8px; border: 1px dashed var(--accent); border-radius: 5px; color: var(--accent); cursor: pointer; }
+.upload input { display: block; margin-top: 5px; max-width: 100%; font-size: 12px; }
+.sample-list { list-style: none; margin: 8px 0 0; padding: 0; max-height: 560px; overflow: auto; }
+.sample-list li { padding: 6px 8px; border: 1px solid var(--line); border-radius: 5px; margin-bottom: 5px; cursor: pointer; }
+.sample-list li.active { border-color: var(--accent); background: #eef4fa; }
+.sample-list .line { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-size: 12.5px; }
+.sample-list b { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sample-list input.group { width: 100%; margin-top: 4px; font-size: 12.5px; }
+.badge { font-size: 11.5px; padding: 1px 7px; border-radius: 9px; border: 1px solid var(--line); white-space: nowrap; }
+.badge.ok { color: var(--ok); border-color: var(--ok); }
+.badge.bad { color: #fff; background: var(--bad); border-color: var(--bad); }
+.badge.neutral { color: var(--muted); }
+
+/* tables */
+table.grid { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+table.grid th, table.grid td { border-bottom: 1px solid var(--line); padding: 4px 6px; text-align: right; white-space: nowrap; }
+table.grid th:first-child, table.grid td:first-child { text-align: left; }
+table.grid thead th { color: var(--muted); font-weight: 600; background: #f8f9fb; position: sticky; top: 0; }
+table.tree tbody tr { cursor: pointer; }
+table.tree tr.active td { background: #eef4fa; font-weight: 600; }
+table.grid tr.err td { color: var(--bad); }
+table.grid td.actions { width: 1%; padding: 0 2px; }
+table.grid td.spill { color: var(--gate); font-weight: 600; }
+.scroll { overflow: auto; max-height: 340px; }
+
+/* plot */
+.plot-host { margin: 4px 0; }
+.plot-svg text { font-family: inherit; user-select: none; }
+.plot-svg .tick { font-size: 11.5px; fill: #333; }
+.plot-svg .axis-title { font-size: 13.5px; font-weight: 600; fill: var(--ink); }
+.plot-svg .axis-scale { font-size: 11px; fill: var(--accent); cursor: pointer; text-decoration: underline; }
+.plot-svg .gate { fill: rgba(204, 102, 51, 0.07); stroke: var(--gate); stroke-width: 1.7; }
+.plot-svg .gate-mismatch { stroke-dasharray: 6 4; }
+.plot-svg .gate-draft { fill: rgba(0, 0, 0, 0.05); stroke: #222; stroke-dasharray: 4 3; stroke-width: 1.3; }
+.plot-svg .gate-vertex { fill: #fff; stroke: #222; stroke-width: 1.3; }
+.plot-svg .gate-vertex.first { stroke: var(--gate); stroke-width: 2; }
+.plot-svg .gate-label { font-size: 12.5px; font-weight: 700; fill: #7c330c; cursor: pointer; paint-order: stroke; stroke: #fff; stroke-width: 3.5px; stroke-linejoin: round; }
+.gate-name { width: 150px; }
+.scale-editor { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px; margin: 6px 0; border: 1px solid var(--accent); border-radius: 5px; background: #f3f7fb; }
+.scale-editor .hint { flex-basis: 100%; margin: 0; }
+.plotly-host { min-height: 330px; }
+
+@media (max-width: 1280px) {
+  main { grid-template-columns: 240px 1fr; }
+  .panel.pops { grid-column: 1 / -1; }
+  .split { grid-template-columns: 1fr; }
+}

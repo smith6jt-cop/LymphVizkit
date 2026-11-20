@@ -1,0 +1,19 @@
+{
+  "source": "registry.npmjs.org via scripts/vendor_js.sh",
+  "files": {
+    "plotly-cartesian.min.js": {
+      "package": "plotly.js-cartesian-dist-min",
+      "version": "4.3.0",
+      "license": "MIT",
+      "sha256": "38d5da8c29f94a5ba9bce10fd48ef0601dfb47bb2490c2e305137993ae7ba175",
+      "bytes": 1516234
+    },
+    "htm-preact-standalone.module.js": {
+      "package": "htm (preact/standalone.module.js; bundles preact)",
+      "version": "3.1.1",
+      "license": "Apache-2.0 (htm), MIT (preact)",
+      "sha256": "72284e8e9079c87817145df1110f74e8a2aa040b2fc384922e18dfcb46fc1fd7",
+      "bytes": 13194
+    }
+  }
+}

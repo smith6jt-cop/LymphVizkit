@@ -60,6 +60,15 @@ The app reads from `data/app_data/` (gitignored except the synthetic example):
 - `json/{case}.geojson` — segmentation boundaries
 - `phenotype_rules.csv` — marker → phenotype gating rules
 
+## Flow cytometry workbench (prototype)
+
+[`flow/`](flow/) holds a separate Python service for conventional and pre-unmixed spectral flow
+cytometry: FCS upload, compensation, scaling, manual gating, statistics, a gating template applied
+across samples, FlowSOM and GatingML export. It does not touch the Shiny app. Background, an
+evaluation of the commercial platform OMIQ, a tiered roadmap, and what has and has not been
+verified are in [`docs/omiq_evaluation.md`](docs/omiq_evaluation.md); usage is in
+[`flow/README.md`](flow/README.md). It is not deployed.
+
 ## Status & roadmap
 
 **This build:** the app code and data model are fully retargeted to follicles, with a configurable
